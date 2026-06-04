@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import GardenPlant from '../components/garden/GardenPlant';
 import XPBar from '../components/garden/XPBar';
-import FloatingParticles from '../components/shared/FloatingParticles';
 import GlowButton from '../components/shared/GlowButton';
 import { getLevel, DAILY_CHALLENGES } from '../lib/gameData';
 import { Link } from 'react-router-dom';
@@ -10,7 +9,9 @@ import { api } from '@/api/apiClient';
 import { useAuth } from '@/lib/AuthContext';
 import { getQuizResult } from '@/lib/quizAccount';
 
-const GARDEN_IMAGE = 'https://media.base44.com/images/public/6a0df0f9dbfc9532afb5c41c/2b1cc646a_generated_768f4b97.png';
+function levelToStage(level) {
+  return level.name.toLowerCase().replace(/\s+/g, '_');
+}
 
 export default function Garden() {
   const { user } = useAuth();
@@ -19,6 +20,7 @@ export default function Garden() {
 
   const result = getQuizResult();
   const level = getLevel(gardenData?.xp ?? 0);
+  const stage = levelToStage(level);
 
   useEffect(() => {
     api.garden.get().then((g) => {
@@ -54,15 +56,16 @@ export default function Garden() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-24 relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 opacity-20">
-        <img src={GARDEN_IMAGE} alt="" className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-background/80" />
-      </div>
-      <FloatingParticles count={25} color="bg-primary/15" />
+    <div className="min-h-screen px-4 py-24 relative overflow-hidden bg-[#030a06]">
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(45,140,60,0.18), transparent 55%), radial-gradient(ellipse 60% 40% at 80% 80%, rgba(30,90,120,0.08), transparent 50%)',
+        }}
+      />
 
-      <div className="max-w-5xl mx-auto relative z-10">
+      <div className="max-w-6xl mx-auto relative z-10">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
           <p className="font-body text-xs uppercase tracking-[0.3em] text-accent mb-3">
@@ -73,14 +76,14 @@ export default function Garden() {
           </h1>
         </motion.div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Plant & XP */}
+        <div className="grid lg:grid-cols-2 gap-8 items-start">
+          {/* 3D plant & XP */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
-            className="rounded-3xl bg-card/60 backdrop-blur-sm border border-border/50 p-8"
+            className="rounded-3xl bg-card/40 backdrop-blur-md border border-primary/15 p-6 lg:p-8 shadow-[0_0_80px_rgba(34,197,94,0.08)]"
           >
-            <GardenPlant level={level.name.toLowerCase().replace(' ', '_')} />
+            <GardenPlant level={stage} />
             <div className="mt-8">
               <XPBar xp={gardenData.xp} />
             </div>
@@ -102,7 +105,7 @@ export default function Garden() {
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
-            className="rounded-3xl bg-card/60 backdrop-blur-sm border border-border/50 p-8"
+            className="rounded-3xl bg-card/50 backdrop-blur-md border border-border/40 p-8"
           >
             <h2 className="font-display text-2xl font-semibold text-foreground mb-6">Daily Challenges</h2>
             <div className="space-y-3">

@@ -1,45 +1,33 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import GardenScene3D from './GardenScene3D';
 
-const PLANT_STAGES = {
-  seed: { emoji: '🌰', size: 'text-4xl', label: 'Seed', soilHeight: '20%' },
-  sprout: { emoji: '🌱', size: 'text-5xl', label: 'Sprout', soilHeight: '25%' },
-  leaf: { emoji: '🌿', size: 'text-6xl', label: 'Leaf', soilHeight: '30%' },
-  bloom: { emoji: '🌸', size: 'text-7xl', label: 'Bloom', soilHeight: '35%' },
-  forest_master: { emoji: '🌳', size: 'text-8xl', label: 'Forest Master', soilHeight: '40%' },
+const STAGE_LABELS = {
+  seed: 'Seed',
+  sprout: 'Sprout',
+  leaf: 'Leaf',
+  bloom: 'Bloom',
+  forest_master: 'Forest Master',
 };
 
 export default function GardenPlant({ level = 'seed' }) {
-  const stage = PLANT_STAGES[level] || PLANT_STAGES.seed;
+  const label = STAGE_LABELS[level] || 'Seed';
 
   return (
-    <div className="relative w-full max-w-sm mx-auto aspect-square flex items-center justify-center">
-      {/* Glow circle */}
-      <div className="absolute w-48 h-48 rounded-full bg-primary/10 animate-pulse-glow" />
-      <div className="absolute w-64 h-64 rounded-full bg-primary/5 animate-pulse-glow" style={{ animationDelay: '1s' }} />
-      
-      {/* Soil */}
-      <div
-        className="absolute bottom-0 left-0 right-0 rounded-b-3xl bg-gradient-to-t from-amber-900/40 to-transparent"
-        style={{ height: stage.soilHeight }}
-      />
-
-      {/* Plant */}
-      <motion.div
+    <div className="relative w-full">
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-primary/10 via-transparent to-emerald-950/40 pointer-events-none" />
+      <div className="absolute top-3 left-3 z-10 px-3 py-1 rounded-full bg-background/60 backdrop-blur-md border border-primary/25">
+        <span className="font-body text-[10px] uppercase tracking-widest text-primary">4K · 3D</span>
+      </div>
+      <GardenScene3D level={level} className="border border-primary/20 shadow-[0_0_60px_rgba(74,222,128,0.12)]" />
+      <motion.p
         key={level}
-        initial={{ scale: 0, rotate: -20 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-        className="relative z-10"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center font-display text-sm font-semibold text-primary mt-4 tracking-wide"
       >
-        <motion.span
-          className={`${stage.size} block`}
-          animate={{ y: [0, -6, 0] }}
-          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          {stage.emoji}
-        </motion.span>
-      </motion.div>
+        Growth stage · {label}
+      </motion.p>
     </div>
   );
 }
