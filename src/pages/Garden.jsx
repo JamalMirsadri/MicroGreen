@@ -9,18 +9,14 @@ import { api } from '@/api/apiClient';
 import { useAuth } from '@/lib/AuthContext';
 import { getQuizResult } from '@/lib/quizAccount';
 
-function levelToStage(level) {
-  return level.name.toLowerCase().replace(/\s+/g, '_');
-}
-
 export default function Garden() {
   const { user } = useAuth();
   const [gardenData, setGardenData] = useState(null);
   const [completedToday, setCompletedToday] = useState([]);
 
   const result = getQuizResult();
-  const level = getLevel(gardenData?.xp ?? 0);
-  const stage = levelToStage(level);
+  const xp = gardenData?.xp ?? 0;
+  const level = getLevel(xp);
 
   useEffect(() => {
     api.garden.get().then((g) => {
@@ -83,7 +79,7 @@ export default function Garden() {
             animate={{ opacity: 1, x: 0 }}
             className="rounded-3xl bg-card/40 backdrop-blur-md border border-primary/15 p-6 lg:p-8 shadow-[0_0_80px_rgba(34,197,94,0.08)]"
           >
-            <GardenPlant level={stage} />
+            <GardenPlant xp={xp} />
             <div className="mt-8">
               <XPBar xp={gardenData.xp} />
             </div>
