@@ -23,6 +23,9 @@ import CreateAccount from './pages/CreateAccount';
 import RequireAccount from './components/RequireAccount';
 import Shop from './pages/Shop';
 import ProductDetail from './pages/ProductDetail';
+import CheckoutPage from './pages/CheckoutPage';
+import CheckoutSuccess from './pages/CheckoutSuccess';
+import CheckoutCancel from './pages/CheckoutCancel';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
@@ -92,6 +95,9 @@ const AuthenticatedApp = () => {
         />
         <Route path="/shop" element={<Shop />} />
         <Route path="/shop/:id" element={<ProductDetail />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/checkout/success" element={<CheckoutSuccess />} />
+        <Route path="/checkout/cancel" element={<CheckoutCancel />} />
         <Route path="/salad-builder" element={<SaladBuilder />} />
         <Route path="/admin" element={<Admin />} />
       </Route>

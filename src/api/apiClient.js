@@ -95,6 +95,11 @@ export const api = {
     create: (body) => request('/api/entities/order', { method: 'POST', body }),
     list: () => request('/api/entities/order'),
   },
+  checkout: {
+    status: () => request('/api/checkout/status'),
+    createSession: (body) => request('/api/checkout/create-session', { method: 'POST', body }),
+    getSession: (sessionId) => request(`/api/checkout/session/${sessionId}`),
+  },
   admin: {
     stats: () => request('/api/admin/stats'),
     me: () => request('/api/admin/me'),

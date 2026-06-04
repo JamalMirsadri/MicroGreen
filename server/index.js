@@ -23,6 +23,7 @@ import {
   getOrCreateGarden,
 } from './entities.js';
 import { ADMIN_COLLECTIONS, newId, readDb, writeDb } from './db.js';
+import { createCheckoutSession, getCheckoutSession, handleWebhook, isStripeEnabled } from './checkout.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -346,6 +347,22 @@ app.get('/api/admin/stats', authMiddleware, requireAdmin, (_req, res) => {
   });
 });
 
+// ─── Stripe Checkout ──────────────────────────────────────────────────────────
+// Webhook must receive raw body for signature verification
+app.post('/api/checkout/webhook', express.raw({ type: 'application/json' }), handleWebhook);
+
+// Stripe availability check
+app.get('/api/checkout/status', (_req, res) => {
+  res.json({ stripe_enabled: isStripeEnabled() });
+});
+
+// Create checkout session (cart → Stripe hosted page)
+app.post('/api/checkout/create-session', authMiddleware, createCheckoutSession);
+
+// Retrieve session (success page verification)
+app.get('/api/checkout/session/:sessionId', authMiddleware, getCheckoutSession);
+
+// ─── Recommendations ──────────────────────────────────────────────────────────
 // Recommend products by quiz mood/goal
 app.post('/api/recommendations', authMiddleware, (req, res) => {
   const { mood, goal, need } = req.body || {};
