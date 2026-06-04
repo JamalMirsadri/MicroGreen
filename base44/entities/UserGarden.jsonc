@@ -1,0 +1,54 @@
+{
+  "name": "UserGarden",
+  "type": "object",
+  "properties": {
+    "xp": {
+      "type": "number",
+      "default": 0
+    },
+    "level": {
+      "type": "string",
+      "enum": [
+        "seed",
+        "sprout",
+        "leaf",
+        "bloom",
+        "forest_master"
+      ],
+      "default": "seed"
+    },
+    "streak_days": {
+      "type": "number",
+      "default": 0
+    },
+    "last_checkin": {
+      "type": "string",
+      "format": "date"
+    },
+    "badges": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Earned badge names"
+    },
+    "completed_challenges": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "plants_grown": {
+      "type": "number",
+      "default": 0
+    },
+    "total_orders": {
+      "type": "number",
+      "default": 0
+    },
+    "identity_name": {
+      "type": "string"
+    }
+  },
+  "required": []
+}

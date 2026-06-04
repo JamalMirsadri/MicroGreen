@@ -1,0 +1,93 @@
+{
+  "name": "Product",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Product name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Product description"
+    },
+    "short_description": {
+      "type": "string",
+      "description": "Brief tagline"
+    },
+    "price": {
+      "type": "number",
+      "description": "Price in dollars"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "Product image URL"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "microgreen",
+        "salad",
+        "mix",
+        "bundle",
+        "subscription"
+      ],
+      "description": "Product category"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags like energy, calm, focus, detox, glow"
+    },
+    "benefits": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Health/wellness benefits"
+    },
+    "flavor_profile": {
+      "type": "string",
+      "enum": [
+        "mild",
+        "fresh",
+        "spicy",
+        "earthy"
+      ],
+      "description": "Flavor profile"
+    },
+    "mood_match": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Moods this product matches"
+    },
+    "goal_match": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Goals this product supports"
+    },
+    "is_featured": {
+      "type": "boolean",
+      "default": false
+    },
+    "stock_status": {
+      "type": "string",
+      "enum": [
+        "in_stock",
+        "low_stock",
+        "out_of_stock"
+      ],
+      "default": "in_stock"
+    }
+  },
+  "required": [
+    "name",
+    "price",
+    "category"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "name": "QuizResult",
+  "type": "object",
+  "properties": {
+    "mood": {
+      "type": "string"
+    },
+    "need": {
+      "type": "string"
+    },
+    "lifestyle": {
+      "type": "string"
+    },
+    "flavor": {
+      "type": "string"
+    },
+    "goal": {
+      "type": "string"
+    },
+    "element": {
+      "type": "string"
+    },
+    "energy_level": {
+      "type": "string"
+    },
+    "stress_level": {
+      "type": "string"
+    },
+    "identity_name": {
+      "type": "string",
+      "description": "Green identity like Energy Sprout"
+    },
+    "identity_description": {
+      "type": "string"
+    },
+    "recommended_products": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Product IDs recommended"
+    }
+  },
+  "required": [
+    "mood",
+    "identity_name"
+  ]
+}
