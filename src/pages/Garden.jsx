@@ -9,6 +9,20 @@ import { api } from '@/api/apiClient';
 import { useAuth } from '@/lib/AuthContext';
 import { getQuizResult } from '@/lib/quizAccount';
 
+/** Returns today's date as YYYY-MM-DD in local time */
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Extract IDs of challenges already completed today from persisted data */
+function getTodayCompleted(garden) {
+  const today = todayKey();
+  return (garden?.daily_completions ?? [])
+    .filter((c) => c.date === today)
+    .map((c) => c.id);
+}
+
 export default function Garden() {
   const { user } = useAuth();
   const [gardenData, setGardenData] = useState(null);
@@ -22,8 +36,11 @@ export default function Garden() {
     api.garden.get().then((g) => {
       setGardenData(g);
       sessionStorage.setItem('gardenXP', String(g.xp));
+      // Restore which challenges the user already finished today
+      setCompletedToday(getTodayCompleted(g));
     }).catch(() => setGardenData({
-      xp: 0, streak_days: 0, badges: [], completed_challenges: [], plants_grown: 0, total_orders: 0,
+      xp: 0, streak_days: 0, badges: [], completed_challenges: [],
+      daily_completions: [], plants_grown: 0, total_orders: 0,
     }));
   }, [user?.id]);
 
@@ -35,11 +52,19 @@ export default function Garden() {
 
   const handleCompleteChallenge = (challenge) => {
     if (!gardenData || completedToday.includes(challenge.id)) return;
-    setCompletedToday([...completedToday, challenge.id]);
+
+    const today = todayKey();
+    const newCompletions = [
+      ...(gardenData.daily_completions ?? []),
+      { id: challenge.id, date: today },
+    ];
+
+    setCompletedToday((prev) => [...prev, challenge.id]);
     persistGarden({
       ...gardenData,
       xp: gardenData.xp + challenge.xp,
-      completed_challenges: [...gardenData.completed_challenges, challenge.id],
+      completed_challenges: [...(gardenData.completed_challenges ?? []), challenge.id],
+      daily_completions: newCompletions,
     });
   };
 
@@ -103,7 +128,15 @@ export default function Garden() {
             animate={{ opacity: 1, x: 0 }}
             className="rounded-3xl bg-card/50 backdrop-blur-md border border-border/40 p-8"
           >
-            <h2 className="font-display text-2xl font-semibold text-foreground mb-6">Daily Challenges</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-display text-2xl font-semibold text-foreground">Daily Challenges</h2>
+              <div className="text-right">
+                <p className="font-body text-xs text-primary font-semibold">
+                  {completedToday.length}/{DAILY_CHALLENGES.length} done
+                </p>
+                <p className="font-body text-[10px] text-muted-foreground mt-0.5">resets at midnight</p>
+              </div>
+            </div>
             <div className="space-y-3">
               {DAILY_CHALLENGES.map((challenge) => {
                 const done = completedToday.includes(challenge.id);
