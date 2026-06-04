@@ -391,7 +391,7 @@ function RecordManager({ section, records, onCreate, onUpdate, onDelete, onRefre
               type="button"
               onClick={() => {
                 setSelectedId(item.id);
-                setDraft(pretty(item));
+                setDraft(clone(item));
               }}
               className={classNames(
                 'w-full text-left rounded-xl border px-3 py-2 transition-colors',
@@ -594,10 +594,9 @@ export default function Admin() {
                 onRefresh={loadAdmin}
               />
             ) : (
-              <JsonEditor
+              <VisualEditor
                 label={activeSection?.label || active}
                 value={collections[active]}
-                rows={active === 'gameConfig' || active === 'quizQuestions' ? 28 : 20}
                 onSave={(value) => saveCollection(active, value)}
               />
             )}
