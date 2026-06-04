@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import { seedDatabase } from './seed.js';
 import {
   authMiddleware,
@@ -33,7 +34,7 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'grow-verdant-api' });
+  res.json({ ok: true });
 });
 
 // Base44-compatible public settings (auth optional for local dev)
@@ -214,7 +215,23 @@ app.post('/api/recommendations', authMiddleware, (req, res) => {
   res.json(scored.slice(0, 6).map(({ _score, ...p }) => p));
 });
 
-app.listen(PORT, () => {
-  console.log(`Grow Verdant API running at http://localhost:${PORT}`);
-  console.log(`Demo login: demo@garden.local / demo1234`);
+// Serve Vite build in production (Render single Web Service)
+const distPath = path.join(__dirname, '..', 'dist');
+const isProduction = process.env.NODE_ENV === 'production';
+if (isProduction && !fs.existsSync(path.join(distPath, 'index.html'))) {
+  console.error('ERROR: dist/index.html missing. Run "npm run build" before start.');
+}
+if (fs.existsSync(path.join(distPath, 'index.html'))) {
+  app.use(express.static(distPath, { index: false }));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path === '/health') return next();
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Grow Verdant running on port ${PORT} (${process.env.NODE_ENV || 'development'})`);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`Demo login: demo@garden.local / demo1234`);
+  }
 });

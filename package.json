@@ -11,10 +11,13 @@
     "dev:client": "vite",
     "dev:server": "node server/index.js",
     "build": "vite build",
+    "start": "node server/index.js",
+    "render-build": "npm install --include=dev && npm run build",
+    "postbuild": "node scripts/verify-build.mjs",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
-    "preview": "vite preview"
+    "preview": "vite preview --host 0.0.0.0 --port 4173"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.31",

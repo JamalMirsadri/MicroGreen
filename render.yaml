@@ -1,0 +1,23 @@
+# Render Blueprint — React (Vite) + Express full-stack
+# Repo: https://github.com/JamalMirsadri/MicroGreen
+
+services:
+  - type: web
+    name: microgreen
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: npm run render-build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: VITE_BASE44_APP_ID
+        value: local-grow-verdant
+      - key: VITE_API_URL
+        value: ""
