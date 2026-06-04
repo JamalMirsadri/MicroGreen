@@ -60,20 +60,213 @@ const ORDER_TEMPLATE = {
   shipping_address: '',
 };
 
-function pretty(value) {
-  return JSON.stringify(value ?? {}, null, 2);
-}
-
-function parseJson(text) {
-  try {
-    return { ok: true, data: JSON.parse(text) };
-  } catch (error) {
-    return { ok: false, error };
-  }
-}
-
 function classNames(...items) {
   return items.filter(Boolean).join(' ');
+}
+
+function titleize(key = '') {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value ?? null));
+}
+
+function setAtPath(source, path, value) {
+  if (path.length === 0) return value;
+  const next = Array.isArray(source) ? [...source] : { ...(source || {}) };
+  const [head, ...rest] = path;
+  next[head] = setAtPath(next[head], rest, value);
+  return next;
+}
+
+function deleteAtPath(source, path) {
+  if (path.length === 0) return source;
+  const next = Array.isArray(source) ? [...source] : { ...(source || {}) };
+  const [head, ...rest] = path;
+  if (rest.length === 0) {
+    if (Array.isArray(next)) next.splice(head, 1);
+    else delete next[head];
+    return next;
+  }
+  next[head] = deleteAtPath(next[head], rest);
+  return next;
+}
+
+function inferArrayItem(items) {
+  const sample = items?.find((item) => item !== null && item !== undefined);
+  if (Array.isArray(sample)) return [];
+  if (sample && typeof sample === 'object') {
+    return Object.fromEntries(Object.entries(sample).map(([key, value]) => [key, inferEmptyValue(value)]));
+  }
+  if (typeof sample === 'number') return 0;
+  if (typeof sample === 'boolean') return false;
+  return '';
+}
+
+function inferEmptyValue(value) {
+  if (Array.isArray(value)) return [];
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, inferEmptyValue(child)]));
+  }
+  if (typeof value === 'number') return 0;
+  if (typeof value === 'boolean') return false;
+  return '';
+}
+
+function FieldLabel({ name, path }) {
+  return (
+    <label className="block font-body text-xs font-medium text-muted-foreground mb-1">
+      {name || titleize(String(path[path.length - 1] || 'Value'))}
+    </label>
+  );
+}
+
+function PrimitiveField({ name, value, path, onChange }) {
+  const fieldKey = String(path[path.length - 1] || '').toLowerCase();
+  const isLongText = typeof value === 'string' && (value.length > 80 || fieldKey.includes('description') || fieldKey.includes('prompt'));
+
+  if (typeof value === 'boolean') {
+    return (
+      <div className="flex items-center justify-between rounded-xl bg-background/40 border border-border/40 px-4 py-3">
+        <div>
+          <FieldLabel name={name} path={path} />
+          <p className="text-xs text-muted-foreground">{value ? 'Enabled / Yes' : 'Disabled / No'}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onChange(path, !value)}
+          className={classNames(
+            'w-12 h-6 rounded-full p-1 transition-colors',
+            value ? 'bg-primary' : 'bg-muted'
+          )}
+        >
+          <span className={classNames('block w-4 h-4 rounded-full bg-white transition-transform', value && 'translate-x-6')} />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <FieldLabel name={name} path={path} />
+      {isLongText ? (
+        <textarea
+          value={value ?? ''}
+          onChange={(e) => onChange(path, e.target.value)}
+          rows={4}
+          className="w-full rounded-xl bg-background/50 border border-border/50 px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+      ) : (
+        <input
+          type={typeof value === 'number' ? 'number' : 'text'}
+          value={value ?? ''}
+          onChange={(e) => onChange(path, typeof value === 'number' ? Number(e.target.value) : e.target.value)}
+          className="w-full h-10 rounded-xl bg-background/50 border border-border/50 px-4 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+      )}
+    </div>
+  );
+}
+
+function ArrayField({ name, value = [], path, onChange }) {
+  const addItem = () => onChange(path, [...value, inferArrayItem(value)]);
+  const removeItem = (index) => onChange(path, deleteAtPath(value, [index]));
+
+  const setChild = (childPath, nextValue) => {
+    onChange(path, setAtPath(value, childPath, nextValue));
+  };
+
+  const isPrimitiveArray = value.every((item) => item === null || typeof item !== 'object');
+
+  return (
+    <div className="rounded-2xl bg-background/30 border border-border/40 p-4">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div>
+          <h4 className="font-body text-sm font-semibold text-foreground">{name}</h4>
+          <p className="text-xs text-muted-foreground">{value.length} item{value.length === 1 ? '' : 's'}</p>
+        </div>
+        <button type="button" onClick={addItem} className="px-3 py-1.5 rounded-full bg-primary/15 text-primary text-xs">
+          Add Item
+        </button>
+      </div>
+
+      {value.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border/60 p-4 text-sm text-muted-foreground">
+          No items yet. Click Add Item.
+        </div>
+      ) : (
+        <div className={classNames('space-y-3', isPrimitiveArray && 'grid sm:grid-cols-2 gap-3 space-y-0')}>
+          {value.map((item, index) => (
+            <div key={index} className="rounded-xl bg-card/50 border border-border/40 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-body text-xs font-semibold text-muted-foreground">Item {index + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => removeItem(index)}
+                  className="text-xs text-red-300 hover:text-red-200"
+                >
+                  Remove
+                </button>
+              </div>
+              <VisualField
+                name=""
+                value={item}
+                path={[index]}
+                onChange={setChild}
+                compact
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ObjectField({ name, value = {}, path, onChange, compact = false }) {
+  const entries = Object.entries(value || {});
+  const setChild = (childPath, nextValue) => {
+    onChange(path, setAtPath(value, childPath, nextValue));
+  };
+
+  return (
+    <div className={classNames(!compact && 'rounded-2xl bg-background/30 border border-border/40 p-4')}>
+      {name && (
+        <div className="mb-3">
+          <h4 className="font-body text-sm font-semibold text-foreground">{name}</h4>
+          <p className="text-xs text-muted-foreground">Edit fields visually. No code required.</p>
+        </div>
+      )}
+      <div className="grid md:grid-cols-2 gap-4">
+        {entries.map(([key, child]) => (
+          <div key={key} className={classNames((Array.isArray(child) || (child && typeof child === 'object')) && 'md:col-span-2')}>
+            <VisualField
+              name={titleize(key)}
+              value={child}
+              path={[key]}
+              onChange={setChild}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VisualField({ name, value, path, onChange, compact = false }) {
+  if (Array.isArray(value)) {
+    return <ArrayField name={name || titleize(String(path[path.length - 1] || 'Items'))} value={value} path={path} onChange={onChange} />;
+  }
+
+  if (value && typeof value === 'object') {
+    return <ObjectField name={name} value={value} path={path} onChange={onChange} compact={compact} />;
+  }
+
+  return <PrimitiveField name={name} value={value} path={path} onChange={onChange} />;
 }
 
 function StatCard({ label, value, icon: Icon }) {
@@ -89,23 +282,18 @@ function StatCard({ label, value, icon: Icon }) {
   );
 }
 
-function JsonEditor({ label, value, onSave, rows = 18 }) {
-  const [text, setText] = useState(pretty(value));
+function VisualEditor({ label, value, onSave }) {
+  const [draft, setDraft] = useState(clone(value));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setText(pretty(value));
+    setDraft(clone(value));
   }, [value]);
 
   const handleSave = async () => {
-    const parsed = parseJson(text);
-    if (!parsed.ok) {
-      toast({ title: 'Invalid JSON', description: parsed.error.message, variant: 'destructive' });
-      return;
-    }
     setSaving(true);
     try {
-      await onSave(parsed.data);
+      await onSave(draft);
       toast({ title: `${label} saved` });
     } catch (error) {
       toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
@@ -128,12 +316,11 @@ function JsonEditor({ label, value, onSave, rows = 18 }) {
           {saving ? 'Saving...' : 'Save'}
         </button>
       </div>
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        rows={rows}
-        spellCheck={false}
-        className="w-full rounded-xl bg-background/70 border border-border/50 p-4 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+      <VisualField
+        name=""
+        value={draft}
+        path={[]}
+        onChange={(path, nextValue) => setDraft(path.length === 0 ? nextValue : setAtPath(draft, path, nextValue))}
       />
     </div>
   );
@@ -141,30 +328,25 @@ function JsonEditor({ label, value, onSave, rows = 18 }) {
 
 function RecordManager({ section, records, onCreate, onUpdate, onDelete, onRefresh }) {
   const [selectedId, setSelectedId] = useState(records?.[0]?.id || '');
-  const [draft, setDraft] = useState(pretty(records?.[0] || {}));
+  const [draft, setDraft] = useState(clone(records?.[0] || {}));
 
   useEffect(() => {
     const current = records?.find((item) => item.id === selectedId) || records?.[0];
     if (current) {
       setSelectedId(current.id);
-      setDraft(pretty(current));
+      setDraft(clone(current));
     } else {
       setSelectedId('');
-      setDraft('{}');
+      setDraft({});
     }
   }, [records, selectedId]);
 
   const current = records?.find((item) => item.id === selectedId);
 
   const saveRecord = async () => {
-    const parsed = parseJson(draft);
-    if (!parsed.ok) {
-      toast({ title: 'Invalid JSON', description: parsed.error.message, variant: 'destructive' });
-      return;
-    }
     try {
-      if (current?.id) await onUpdate(section.key, current.id, parsed.data);
-      else await onCreate(section.key, parsed.data);
+      if (current?.id) await onUpdate(section.key, current.id, draft);
+      else await onCreate(section.key, draft);
       toast({ title: `${section.label} saved` });
       onRefresh();
     } catch (error) {
@@ -175,7 +357,7 @@ function RecordManager({ section, records, onCreate, onUpdate, onDelete, onRefre
   const addTemplate = () => {
     const template = section.key === 'products' ? PRODUCT_TEMPLATE : section.key === 'orders' ? ORDER_TEMPLATE : {};
     setSelectedId('');
-    setDraft(pretty(template));
+    setDraft(clone(template));
   };
 
   const removeRecord = async () => {
@@ -244,12 +426,11 @@ function RecordManager({ section, records, onCreate, onUpdate, onDelete, onRefre
             </button>
           </div>
         </div>
-        <textarea
+        <VisualField
+          name=""
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          rows={24}
-          spellCheck={false}
-          className="w-full rounded-xl bg-background/70 border border-border/50 p-4 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          path={[]}
+          onChange={(path, nextValue) => setDraft(path.length === 0 ? nextValue : setAtPath(draft, path, nextValue))}
         />
       </div>
     </div>
