@@ -48,6 +48,16 @@ export function requireAuth(req, res, next) {
   next();
 }
 
+export function requireAdmin(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Admin access required' });
+  }
+  next();
+}
+
 function sanitizeUser(user) {
   const { password_hash, ...safe } = user;
   return safe;
@@ -139,5 +149,25 @@ export async function ensureDemoUser() {
     created_date: new Date().toISOString(),
     updated_date: new Date().toISOString(),
   });
+  writeDb(db);
+}
+
+export async function ensureAdminUser() {
+  const db = readDb();
+  if (db.users.some((u) => u.role === 'admin')) return;
+
+  const email = (process.env.ADMIN_EMAIL || 'admin@garden.local').toLowerCase().trim();
+  const password = process.env.ADMIN_PASSWORD || 'admin1234';
+  const password_hash = await bcrypt.hash(password, 10);
+  const user = {
+    id: newId(),
+    email,
+    full_name: 'Inner Garden Admin',
+    password_hash,
+    role: 'admin',
+    created_date: new Date().toISOString(),
+  };
+
+  db.users.push(user);
   writeDb(db);
 }

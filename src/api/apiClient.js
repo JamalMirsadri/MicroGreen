@@ -88,5 +88,18 @@ export const api = {
     request('/api/recommendations', { method: 'POST', body }),
   admin: {
     stats: () => request('/api/admin/stats'),
+    me: () => request('/api/admin/me'),
+    overview: () => request('/api/admin/overview'),
+    collection: (name) => request(`/api/admin/collections/${name}`),
+    saveCollection: (name, body) =>
+      request(`/api/admin/collections/${name}`, { method: 'PUT', body }),
+    createRecord: (name, body) =>
+      request(`/api/admin/collections/${name}`, { method: 'POST', body }),
+    updateRecord: (name, id, body) =>
+      request(`/api/admin/collections/${name}/${id}`, { method: 'PATCH', body }),
+    deleteRecord: (name, id) =>
+      request(`/api/admin/collections/${name}/${id}`, { method: 'DELETE' }),
+    testAi: (body) => request('/api/admin/ai/test', { method: 'POST', body }),
+    testPayments: (body) => request('/api/admin/payments/test', { method: 'POST', body }),
   },
 };

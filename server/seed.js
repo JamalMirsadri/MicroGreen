@@ -108,6 +108,114 @@ const PRODUCTS = [
   },
 ];
 
+const DEFAULT_SITE_CONTENT = {
+  brandName: 'Inner Garden',
+  homeHeroTitle: 'Discover your inner garden',
+  homeHeroSubtitle: 'Take a personalized journey to discover the microgreens crafted for your unique body, mood, and goals.',
+  ctaTitle: 'Ready to grow?',
+  ctaSubtitle: 'In just 2 minutes, discover the microgreens made for you.',
+  footerText: 'Premium microgreens for your body, mood, and goals.',
+  supportEmail: 'support@innergarden.local',
+};
+
+const DEFAULT_QUIZ_QUESTIONS = [
+  {
+    id: 'mood',
+    question: 'How do you feel right now?',
+    subtitle: 'Listen to your body - step one',
+    type: 'grid',
+    options: [
+      { value: 'calm', label: 'Calm', icon: '🌊', description: 'Peaceful, centred' },
+      { value: 'tired', label: 'Tired', icon: '🌙', description: 'Low energy, drained' },
+      { value: 'stressed', label: 'Stressed', icon: '⚡', description: 'Tense, overwhelmed' },
+      { value: 'energetic', label: 'Energetic', icon: '☀️', description: 'Alive, motivated' },
+      { value: 'focused', label: 'Focused', icon: '🎯', description: 'Sharp, in the zone' },
+    ],
+  },
+  {
+    id: 'goal',
+    question: 'What is your primary wellness goal?',
+    subtitle: 'Set your deepest intention',
+    type: 'grid',
+    options: [
+      { value: 'more_energy', label: 'More Energy', icon: '⚡', description: 'Power through every day' },
+      { value: 'better_mood', label: 'Better Mood', icon: '😊', description: 'Lift your spirits naturally' },
+      { value: 'detox_reset', label: 'Detox & Reset', icon: '💧', description: 'Cleanse and restore' },
+      { value: 'strength_build', label: 'Build Strength', icon: '💪', description: 'Fuel muscle & recovery' },
+      { value: 'focus_clarity', label: 'Mental Clarity', icon: '🧠', description: 'Sharpen your mind' },
+    ],
+  },
+  {
+    id: 'need',
+    question: 'What does your body need most?',
+    subtitle: 'Your body whispers its needs',
+    type: 'grid',
+    options: [
+      { value: 'energy', label: 'Energy Boost', icon: '🔥', description: 'Ignite your fire' },
+      { value: 'calm', label: 'Inner Calm', icon: '🧘', description: 'Find your stillness' },
+      { value: 'detox', label: 'Deep Detox', icon: '💧', description: 'Purify and refresh' },
+      { value: 'strength', label: 'Strength', icon: '💪', description: 'Power and resilience' },
+      { value: 'glow', label: 'Natural Glow', icon: '✨', description: 'Radiance from within' },
+    ],
+  },
+];
+
+const DEFAULT_GAME_CONFIG = {
+  levels: [
+    { name: 'Seed', minXp: 0, icon: '🌰' },
+    { name: 'Sprout', minXp: 100, icon: '🌱' },
+    { name: 'Leaf', minXp: 300, icon: '🍃' },
+    { name: 'Bloom', minXp: 600, icon: '🌸' },
+    { name: 'Forest Master', minXp: 1000, icon: '🌳' },
+  ],
+  dailyChallenges: [
+    { id: 'water', title: 'Drink 8 glasses of water', xp: 10, icon: '💧' },
+    { id: 'greens', title: 'Eat your greens today', xp: 15, icon: '🥬' },
+    { id: 'walk', title: 'Take a 15 minute walk', xp: 10, icon: '🚶' },
+    { id: 'mood', title: 'Log your mood', xp: 5, icon: '😊' },
+    { id: 'meal', title: 'Prepare a healthy meal', xp: 20, icon: '🥗' },
+  ],
+  badges: [
+    { id: 'first_quiz', name: 'Self Discovery', description: 'Completed your first quiz', icon: '🔮' },
+    { id: 'first_order', name: 'First Harvest', description: 'Placed your first order', icon: '🛒' },
+    { id: 'week_streak', name: 'Week Warrior', description: '7-day streak achieved', icon: '🔥' },
+  ],
+  subscriptionTiers: [
+    { id: 'seed', name: 'Seed', price: 19, icon: '🌰', features: ['2 microgreen varieties/month', 'Basic recipes'] },
+    { id: 'sprout', name: 'Sprout', price: 34, icon: '🌱', features: ['4 microgreen varieties/month', 'Personalized mixes'], popular: true },
+    { id: 'leaf', name: 'Leaf', price: 49, icon: '🍃', features: ['6 microgreen varieties/month', 'Custom salad box'] },
+    { id: 'bloom', name: 'Bloom', price: 79, icon: '🌸', features: ['All varieties unlimited', 'VIP community access'] },
+  ],
+  identities: {
+    calm_energy: { name: 'Calm Leaf', emoji: '🍃', description: 'Quiet strength and gentle vitality.' },
+    tired_energy: { name: 'Energy Sprout', emoji: '🌱', description: 'A spark to reignite your fire.' },
+    stressed_calm: { name: 'Peace Mint', emoji: '🌿', description: 'Cool greens to bring you back to center.' },
+  },
+};
+
+const DEFAULT_INTEGRATIONS = {
+  payments: {
+    provider: 'stripe',
+    enabled: false,
+    mode: 'test',
+    publicKey: '',
+    webhookConfigured: false,
+    currency: 'usd',
+    checkoutSuccessUrl: '/garden',
+    checkoutCancelUrl: '/subscribe',
+  },
+  ai: {
+    enabled: false,
+    providers: [
+      { name: 'OpenAI', enabled: false, model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY' },
+      { name: 'Anthropic', enabled: false, model: 'claude-3-5-sonnet-latest', envKey: 'ANTHROPIC_API_KEY' },
+    ],
+    recommendationPrompt: 'Recommend microgreens based on mood, goals, lifestyle, and flavor preferences.',
+    contentPrompt: 'Generate wellness and microgreen content in the Inner Garden brand voice.',
+    supportPrompt: 'Help customers with subscriptions, orders, product recommendations, and garden progress.',
+  },
+};
+
 export function seedDatabase() {
   const db = readDb();
   let changed = false;
@@ -119,6 +227,26 @@ export function seedDatabase() {
       updated_date: new Date().toISOString(),
       ...p,
     }));
+    changed = true;
+  }
+
+  if (!db.siteContent || Object.keys(db.siteContent).length === 0) {
+    db.siteContent = DEFAULT_SITE_CONTENT;
+    changed = true;
+  }
+
+  if (!Array.isArray(db.quizQuestions) || db.quizQuestions.length === 0) {
+    db.quizQuestions = DEFAULT_QUIZ_QUESTIONS;
+    changed = true;
+  }
+
+  if (!db.gameConfig || !Array.isArray(db.gameConfig.levels) || db.gameConfig.levels.length === 0) {
+    db.gameConfig = DEFAULT_GAME_CONFIG;
+    changed = true;
+  }
+
+  if (!db.integrations || !db.integrations.payments || !db.integrations.ai) {
+    db.integrations = DEFAULT_INTEGRATIONS;
     changed = true;
   }
 

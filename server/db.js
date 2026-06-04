@@ -12,6 +12,32 @@ const DEFAULT_DB = {
   orders: [],
   userGardens: [],
   quizResults: [],
+  siteContent: {},
+  quizQuestions: [],
+  gameConfig: {
+    levels: [],
+    dailyChallenges: [],
+    badges: [],
+    subscriptionTiers: [],
+    identities: {},
+  },
+  integrations: {
+    payments: {
+      provider: 'stripe',
+      enabled: false,
+      mode: 'test',
+      publicKey: '',
+      webhookConfigured: false,
+      currency: 'usd',
+    },
+    ai: {
+      enabled: false,
+      providers: [],
+      recommendationPrompt: '',
+      contentPrompt: '',
+      supportPrompt: '',
+    },
+  },
 };
 
 function ensureDbFile() {
@@ -43,3 +69,15 @@ export const ENTITY_MAP = {
   QuizResult: 'quizResults',
   User: 'users',
 };
+
+export const ADMIN_COLLECTIONS = [
+  'users',
+  'products',
+  'orders',
+  'userGardens',
+  'quizResults',
+  'siteContent',
+  'quizQuestions',
+  'gameConfig',
+  'integrations',
+];

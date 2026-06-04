@@ -10,7 +10,9 @@ import {
   loginUser,
   getMe,
   ensureDemoUser,
+  ensureAdminUser,
   requireAuth,
+  requireAdmin,
 } from './auth.js';
 import {
   listEntities,
@@ -20,7 +22,7 @@ import {
   deleteEntity,
   getOrCreateGarden,
 } from './entities.js';
-import { readDb } from './db.js';
+import { ADMIN_COLLECTIONS, newId, readDb, writeDb } from './db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -28,6 +30,7 @@ const APP_ID = process.env.VITE_BASE44_APP_ID || 'local-grow-verdant';
 
 seedDatabase();
 await ensureDemoUser();
+await ensureAdminUser();
 
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
@@ -77,6 +80,150 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
 
 app.post('/api/auth/logout', (_req, res) => {
   res.json({ success: true });
+});
+
+function sanitizeAdminDb(db) {
+  return {
+    ...db,
+    users: db.users.map(({ password_hash, ...user }) => user),
+  };
+}
+
+function ensureCollection(name) {
+  if (!ADMIN_COLLECTIONS.includes(name)) {
+    const err = new Error('Unknown admin collection');
+    err.status = 404;
+    throw err;
+  }
+}
+
+function upsertCollectionRecord(collection, payload, id = null) {
+  const db = readDb();
+  ensureCollection(collection);
+  if (!Array.isArray(db[collection])) {
+    throw Object.assign(new Error('Collection is not record-based'), { status: 400 });
+  }
+
+  const now = new Date().toISOString();
+  if (id) {
+    const idx = db[collection].findIndex((item) => item.id === id);
+    if (idx === -1) throw Object.assign(new Error('Record not found'), { status: 404 });
+    db[collection][idx] = { ...db[collection][idx], ...payload, id, updated_date: now };
+    writeDb(db);
+    return db[collection][idx];
+  }
+
+  const record = {
+    id: payload.id || newId(),
+    created_date: now,
+    updated_date: now,
+    ...payload,
+  };
+  db[collection].push(record);
+  writeDb(db);
+  return record;
+}
+
+// Admin management API
+app.get('/api/admin/me', authMiddleware, requireAdmin, (req, res) => {
+  res.json(req.user);
+});
+
+app.get('/api/admin/overview', authMiddleware, requireAdmin, (_req, res) => {
+  const db = sanitizeAdminDb(readDb());
+  res.json({
+    collections: ADMIN_COLLECTIONS,
+    counts: {
+      users: db.users.length,
+      products: db.products.length,
+      orders: db.orders.length,
+      userGardens: db.userGardens.length,
+      quizResults: db.quizResults.length,
+    },
+    siteContent: db.siteContent,
+    integrations: db.integrations,
+    gameConfig: db.gameConfig,
+    quizQuestions: db.quizQuestions,
+  });
+});
+
+app.get('/api/admin/collections/:collection', authMiddleware, requireAdmin, (req, res) => {
+  try {
+    const { collection } = req.params;
+    ensureCollection(collection);
+    const db = sanitizeAdminDb(readDb());
+    res.json(db[collection]);
+  } catch (err) {
+    res.status(err.status || 500).json({ message: err.message });
+  }
+});
+
+app.put('/api/admin/collections/:collection', authMiddleware, requireAdmin, (req, res) => {
+  try {
+    const { collection } = req.params;
+    ensureCollection(collection);
+    const db = readDb();
+    db[collection] = req.body;
+    writeDb(db);
+    res.json(sanitizeAdminDb(readDb())[collection]);
+  } catch (err) {
+    res.status(err.status || 500).json({ message: err.message });
+  }
+});
+
+app.post('/api/admin/collections/:collection', authMiddleware, requireAdmin, (req, res) => {
+  try {
+    const record = upsertCollectionRecord(req.params.collection, req.body);
+    const { password_hash, ...safeRecord } = record;
+    res.status(201).json(safeRecord);
+  } catch (err) {
+    res.status(err.status || 500).json({ message: err.message });
+  }
+});
+
+app.patch('/api/admin/collections/:collection/:id', authMiddleware, requireAdmin, (req, res) => {
+  try {
+    const record = upsertCollectionRecord(req.params.collection, req.body, req.params.id);
+    const { password_hash, ...safeRecord } = record;
+    res.json(safeRecord);
+  } catch (err) {
+    res.status(err.status || 500).json({ message: err.message });
+  }
+});
+
+app.delete('/api/admin/collections/:collection/:id', authMiddleware, requireAdmin, (req, res) => {
+  try {
+    const { collection, id } = req.params;
+    ensureCollection(collection);
+    const db = readDb();
+    if (!Array.isArray(db[collection])) {
+      return res.status(400).json({ message: 'Collection is not record-based' });
+    }
+    const before = db[collection].length;
+    db[collection] = db[collection].filter((item) => item.id !== id);
+    if (db[collection].length === before) return res.status(404).json({ message: 'Record not found' });
+    writeDb(db);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(err.status || 500).json({ message: err.message });
+  }
+});
+
+app.post('/api/admin/ai/test', authMiddleware, requireAdmin, (req, res) => {
+  const { provider, prompt } = req.body || {};
+  res.json({
+    ok: true,
+    provider: provider || 'mock',
+    message: 'AI provider configuration saved. Add API keys in Render environment variables before enabling live calls.',
+    preview: `Configured prompt: ${(prompt || '').slice(0, 160)}`,
+  });
+});
+
+app.post('/api/admin/payments/test', authMiddleware, requireAdmin, (_req, res) => {
+  res.json({
+    ok: true,
+    message: 'Payment configuration saved. Add Stripe keys and webhook handling before charging real customers.',
+  });
 });
 
 // Garden helpers (account required)
@@ -146,7 +293,7 @@ entityNames.forEach((name) => {
 });
 
 // Admin stats
-app.get('/api/admin/stats', authMiddleware, (_req, res) => {
+app.get('/api/admin/stats', authMiddleware, requireAdmin, (_req, res) => {
   const db = readDb();
   const identityCounts = {};
   db.quizResults.forEach((q) => {
