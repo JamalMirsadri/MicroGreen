@@ -4,6 +4,7 @@ import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { CartProvider } from '@/lib/CartContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 import AppLayout from './components/shared/AppLayout';
@@ -20,6 +21,8 @@ import Admin from './pages/Admin';
 import Login from './pages/Login';
 import CreateAccount from './pages/CreateAccount';
 import RequireAccount from './components/RequireAccount';
+import Shop from './pages/Shop';
+import ProductDetail from './pages/ProductDetail';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
@@ -87,6 +90,8 @@ const AuthenticatedApp = () => {
             </RequireAccount>
           }
         />
+        <Route path="/shop" element={<Shop />} />
+        <Route path="/shop/:id" element={<ProductDetail />} />
         <Route path="/salad-builder" element={<SaladBuilder />} />
         <Route path="/admin" element={<Admin />} />
       </Route>
@@ -99,10 +104,12 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <QueryClientProvider client={queryClientInstance}>
-          <AuthenticatedApp />
-          <Toaster />
-        </QueryClientProvider>
+        <CartProvider>
+          <QueryClientProvider client={queryClientInstance}>
+            <AuthenticatedApp />
+            <Toaster />
+          </QueryClientProvider>
+        </CartProvider>
       </AuthProvider>
     </Router>
   )

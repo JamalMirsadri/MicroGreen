@@ -86,6 +86,15 @@ export const api = {
   },
   recommendations: (body) =>
     request('/api/recommendations', { method: 'POST', body }),
+  products: {
+    list: () => request('/api/entities/product'),
+    get: (id) => request(`/api/entities/product/${id}`),
+    filter: (body) => request('/api/entities/product/filter', { method: 'POST', body }),
+  },
+  orders: {
+    create: (body) => request('/api/entities/order', { method: 'POST', body }),
+    list: () => request('/api/entities/order'),
+  },
   admin: {
     stats: () => request('/api/admin/stats'),
     me: () => request('/api/admin/me'),
