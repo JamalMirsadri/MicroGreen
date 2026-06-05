@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import multer from 'multer';
 import { seedDatabase } from './seed.js';
 import {
   authMiddleware,
@@ -26,8 +27,27 @@ import { ADMIN_COLLECTIONS, newId, readDb, writeDb } from './db.js';
 import { createCheckoutSession, getCheckoutSession, handleWebhook, isStripeEnabled } from './checkout.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PORT = process.env.PORT || 3001;
+const PORT   = process.env.PORT || 3001;
 const APP_ID = process.env.VITE_BASE44_APP_ID || 'local-grow-verdant';
+
+// ── Multer: image uploads ──────────────────────────────────────────────────────
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
+    filename: (_req, file, cb) => {
+      const ext  = path.extname(file.originalname).toLowerCase();
+      const safe = Date.now() + '-' + Math.random().toString(36).slice(2) + ext;
+      cb(null, safe);
+    },
+  }),
+  limits: { fileSize: 8 * 1024 * 1024 }, // 8 MB
+  fileFilter: (_req, file, cb) => {
+    cb(null, /^image\//i.test(file.mimetype));
+  },
+});
 
 seedDatabase();
 await ensureDemoUser();
@@ -345,6 +365,45 @@ app.get('/api/admin/stats', authMiddleware, requireAdmin, (_req, res) => {
       { name: 'Week 4', revenue: db.orders.slice(9).reduce((s, o) => s + (o.total || 0), 0) },
     ],
   });
+});
+
+// ─── Uploads: serve static + upload endpoint ──────────────────────────────────
+app.use('/uploads', express.static(UPLOADS_DIR));
+
+app.post('/api/upload/image', requireAuth, upload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'No image file provided' });
+  const url = `/uploads/${req.file.filename}`;
+  res.json({ url, filename: req.file.filename });
+});
+
+// ─── Profile: client shipping details ─────────────────────────────────────────
+app.get('/api/profile', requireAuth, (req, res) => {
+  const db   = readDb();
+  const user = db.users.find((u) => u.id === req.user.id);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  const { password_hash, ...safe } = user;
+  res.json(safe);
+});
+
+app.patch('/api/profile', requireAuth, (req, res) => {
+  const ALLOWED = [
+    'full_name', 'phone', 'nif', 'birthday',
+    'shipping_address',  // object: street, city, state, postal_code, country
+    'billing_address',
+  ];
+  const db  = readDb();
+  const idx = db.users.findIndex((u) => u.id === req.user.id);
+  if (idx === -1) return res.status(404).json({ message: 'User not found' });
+
+  const update = {};
+  for (const key of ALLOWED) {
+    if (key in req.body) update[key] = req.body[key];
+  }
+  db.users[idx] = { ...db.users[idx], ...update, updated_date: new Date().toISOString() };
+  writeDb(db);
+
+  const { password_hash, ...safe } = db.users[idx];
+  res.json(safe);
 });
 
 // ─── Stripe Checkout ──────────────────────────────────────────────────────────

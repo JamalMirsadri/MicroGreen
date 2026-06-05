@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Leaf, LogOut, Menu, ShoppingBag, Sparkles, User, X } from 'lucide-react';
+import { Leaf, LogOut, Menu, Settings, ShoppingBag, Sparkles, User, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { useCart } from '@/lib/CartContext';
 import CartDrawer from '@/components/shop/CartDrawer';
@@ -91,10 +91,13 @@ export default function Navbar() {
 
               {isAuthenticated ? (
                 <>
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-body text-muted-foreground">
+                  <Link
+                    to="/profile"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-body text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                  >
                     <User className="w-4 h-4" />
-                    {user?.full_name || user?.email}
-                  </span>
+                    {user?.full_name?.split(' ')[0] || user?.email}
+                  </Link>
                   <button
                     type="button"
                     onClick={() => logout(true)}
@@ -157,7 +160,15 @@ export default function Navbar() {
                     {link.label}
                   </Link>
                 ))}
-                {isAuthenticated ? (
+              {isAuthenticated ? (
+                <>
+                  <Link
+                    to="/profile"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    <User className="w-4 h-4" /> My Profile
+                  </Link>
                   <button
                     type="button"
                     onClick={() => { logout(true); setOpen(false); }}
@@ -165,7 +176,8 @@ export default function Navbar() {
                   >
                     Sign out
                   </button>
-                ) : (
+                </>
+              ) : (
                   <Link
                     to="/login"
                     onClick={() => setOpen(false)}

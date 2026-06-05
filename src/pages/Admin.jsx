@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Award,
@@ -9,15 +9,18 @@ import {
   FileText,
   HelpCircle,
   Home,
+  ImagePlus,
   Leaf,
   RefreshCw,
   Save,
   ShoppingBag,
   Sparkles,
   Trash2,
+  Upload,
   Users,
 } from 'lucide-react';
 import { api } from '@/api/apiClient';
+import { getToken } from '@/api/apiClient';
 import { useAuth } from '@/lib/AuthContext';
 import { toast } from '@/components/ui/use-toast';
 
@@ -125,8 +128,87 @@ function FieldLabel({ name, path }) {
   );
 }
 
+function ImageField({ name, value, path, onChange }) {
+  const fileRef   = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview]     = useState(value || '');
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append('image', file);
+      const token = getToken();
+      const res = await fetch('/api/upload/image', {
+        method: 'POST',
+        body: form,
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const { url } = await res.json();
+      setPreview(url);
+      onChange(path, url);
+    } catch (err) {
+      toast({ title: 'Image upload failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div>
+      <FieldLabel name={name} path={path} />
+      <div className="space-y-2">
+        {/* Preview */}
+        {preview && (
+          <div className="relative w-full h-40 rounded-xl overflow-hidden border border-border/40 bg-background/30">
+            <img
+              src={preview}
+              alt="preview"
+              className="w-full h-full object-cover"
+              onError={() => setPreview('')}
+            />
+          </div>
+        )}
+        {/* Upload button */}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/15 text-primary text-sm font-medium hover:bg-primary/25 transition-colors disabled:opacity-50"
+          >
+            {uploading ? (
+              <><span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /> Uploading…</>
+            ) : (
+              <><Upload className="w-4 h-4" /> Upload Image</>
+            )}
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+        </div>
+        {/* URL fallback */}
+        <input
+          type="text"
+          value={value ?? ''}
+          placeholder="Or paste image URL…"
+          onChange={(e) => { setPreview(e.target.value); onChange(path, e.target.value); }}
+          className="w-full h-10 rounded-xl bg-background/50 border border-border/50 px-4 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+      </div>
+    </div>
+  );
+}
+
 function PrimitiveField({ name, value, path, onChange }) {
   const fieldKey = String(path[path.length - 1] || '').toLowerCase();
+
+  // Detect image URL fields
+  if (fieldKey === 'image_url' || fieldKey === 'image' || fieldKey.endsWith('_image_url')) {
+    return <ImageField name={name} value={value} path={path} onChange={onChange} />;
+  }
+
   const isLongText = typeof value === 'string' && (value.length > 80 || fieldKey.includes('description') || fieldKey.includes('prompt'));
 
   if (typeof value === 'boolean') {
@@ -327,61 +409,95 @@ function VisualEditor({ label, value, onSave }) {
 }
 
 function RecordManager({ section, records, onCreate, onUpdate, onDelete, onRefresh }) {
-  const [selectedId, setSelectedId] = useState(records?.[0]?.id || '');
-  const [draft, setDraft] = useState(clone(records?.[0] || {}));
+  const [selectedId, setSelectedId] = useState(null);
+  const [draft, setDraft]           = useState(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [saving, setSaving]         = useState(false);
 
+  // Initialise selection only when records first load
   useEffect(() => {
-    const current = records?.find((item) => item.id === selectedId) || records?.[0];
-    if (current) {
-      setSelectedId(current.id);
-      setDraft(clone(current));
-    } else {
-      setSelectedId('');
-      setDraft({});
+    if (isCreating) return;          // Don't override an in-progress new-record form
+    if (selectedId) {
+      const still = records?.find((r) => r.id === selectedId);
+      if (still) { setDraft(clone(still)); return; }
     }
-  }, [records, selectedId]);
+    const first = records?.[0] || null;
+    setSelectedId(first?.id || null);
+    setDraft(first ? clone(first) : null);
+  }, [records]); // intentionally only re-run when records change
 
-  const current = records?.find((item) => item.id === selectedId);
+  const current = records?.find((r) => r.id === selectedId) ?? null;
 
   const saveRecord = async () => {
+    setSaving(true);
     try {
-      if (current?.id) await onUpdate(section.key, current.id, draft);
-      else await onCreate(section.key, draft);
+      if (current?.id) {
+        await onUpdate(section.key, current.id, draft);
+      } else {
+        await onCreate(section.key, draft);
+      }
       toast({ title: `${section.label} saved` });
+      setIsCreating(false);
       onRefresh();
     } catch (error) {
       toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
     }
   };
 
   const addTemplate = () => {
-    const template = section.key === 'products' ? PRODUCT_TEMPLATE : section.key === 'orders' ? ORDER_TEMPLATE : {};
-    setSelectedId('');
+    const template =
+      section.key === 'products' ? PRODUCT_TEMPLATE :
+      section.key === 'orders'   ? ORDER_TEMPLATE   : {};
+    setSelectedId(null);
     setDraft(clone(template));
+    setIsCreating(true);
+  };
+
+  const selectRecord = (item) => {
+    setSelectedId(item.id);
+    setDraft(clone(item));
+    setIsCreating(false);
   };
 
   const removeRecord = async () => {
     if (!current?.id) return;
-    if (!window.confirm(`Delete ${section.label} record?`)) return;
+    if (!window.confirm(`Delete this ${section.label} record?`)) return;
     try {
       await onDelete(section.key, current.id);
       toast({ title: 'Record deleted' });
+      setSelectedId(null);
+      setDraft(null);
+      setIsCreating(false);
       onRefresh();
     } catch (error) {
       toast({ title: 'Delete failed', description: error.message, variant: 'destructive' });
     }
   };
 
+  const cancelNew = () => {
+    const first = records?.[0] || null;
+    setSelectedId(first?.id || null);
+    setDraft(first ? clone(first) : null);
+    setIsCreating(false);
+  };
+
   return (
     <div className="grid lg:grid-cols-[320px_1fr] gap-5">
+      {/* ── Record list ─────────────────────────────────── */}
       <div className="rounded-2xl bg-card/70 border border-border/50 p-4">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="font-display text-lg font-semibold">{section.label}</h3>
             <p className="text-xs text-muted-foreground">{records?.length || 0} records</p>
           </div>
-          <button onClick={addTemplate} className="px-3 py-1.5 rounded-full bg-primary/15 text-primary text-xs">
-            Add
+          <button
+            type="button"
+            onClick={addTemplate}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
+          >
+            + Add New
           </button>
         </div>
         <div className="space-y-2 max-h-[520px] overflow-auto pr-1">
@@ -389,13 +505,12 @@ function RecordManager({ section, records, onCreate, onUpdate, onDelete, onRefre
             <button
               key={item.id}
               type="button"
-              onClick={() => {
-                setSelectedId(item.id);
-                setDraft(clone(item));
-              }}
+              onClick={() => selectRecord(item)}
               className={classNames(
                 'w-full text-left rounded-xl border px-3 py-2 transition-colors',
-                selectedId === item.id ? 'border-primary/50 bg-primary/10' : 'border-border/40 bg-background/30 hover:bg-secondary/40'
+                selectedId === item.id && !isCreating
+                  ? 'border-primary/50 bg-primary/10'
+                  : 'border-border/40 bg-background/30 hover:bg-secondary/40'
               )}
             >
               <div className="font-body text-sm text-foreground truncate">
@@ -404,34 +519,71 @@ function RecordManager({ section, records, onCreate, onUpdate, onDelete, onRefre
               <div className="font-mono text-[10px] text-muted-foreground truncate">{item.id}</div>
             </button>
           ))}
+          {records?.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-6">
+              No records yet. Click <strong>+ Add New</strong> to create one.
+            </p>
+          )}
         </div>
       </div>
 
+      {/* ── Editor panel ────────────────────────────────── */}
       <div className="rounded-2xl bg-card/70 border border-border/50 p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Edit3 className="w-4 h-4 text-primary" />
-            {current ? 'Edit Record' : 'Create Record'}
-          </h3>
-          <div className="flex gap-2">
-            {current && (
-              <button onClick={removeRecord} className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-red-500/10 text-red-300 text-xs">
-                <Trash2 className="w-4 h-4" />
-                Delete
-              </button>
-            )}
-            <button onClick={saveRecord} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm">
-              <Save className="w-4 h-4" />
-              Save
-            </button>
+        {draft === null ? (
+          <div className="h-full flex flex-col items-center justify-center gap-3 text-center py-12">
+            <p className="text-4xl">📝</p>
+            <p className="font-display text-lg font-semibold text-foreground">Select a record to edit</p>
+            <p className="font-body text-sm text-muted-foreground">or click <strong>+ Add New</strong> to create one</p>
           </div>
-        </div>
-        <VisualField
-          name=""
-          value={draft}
-          path={[]}
-          onChange={(path, nextValue) => setDraft(path.length === 0 ? nextValue : setAtPath(draft, path, nextValue))}
-        />
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-display text-lg font-semibold flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-primary" />
+                {isCreating ? `New ${section.label}` : 'Edit Record'}
+              </h3>
+              <div className="flex gap-2">
+                {isCreating && (
+                  <button
+                    type="button"
+                    onClick={cancelNew}
+                    className="px-3 py-2 rounded-full bg-secondary text-muted-foreground text-xs hover:text-foreground"
+                  >
+                    Cancel
+                  </button>
+                )}
+                {!isCreating && current && (
+                  <button
+                    type="button"
+                    onClick={removeRecord}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-red-500/10 text-red-300 text-xs hover:bg-red-500/20"
+                  >
+                    <Trash2 className="w-4 h-4" /> Delete
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={saveRecord}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-60 hover:shadow-[0_0_16px_rgba(34,197,94,0.3)] transition-shadow"
+                >
+                  <Save className="w-4 h-4" />
+                  {saving ? 'Saving…' : isCreating ? 'Create' : 'Save'}
+                </button>
+              </div>
+            </div>
+            <div className="overflow-y-auto max-h-[600px] pr-1">
+              <VisualField
+                name=""
+                value={draft}
+                path={[]}
+                onChange={(path, nextValue) =>
+                  setDraft((prev) => path.length === 0 ? nextValue : setAtPath(prev, path, nextValue))
+                }
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

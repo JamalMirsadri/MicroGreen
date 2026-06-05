@@ -95,6 +95,10 @@ export const api = {
     create: (body) => request('/api/entities/order', { method: 'POST', body }),
     list: () => request('/api/entities/order'),
   },
+  profile: {
+    get: () => request('/api/profile'),
+    update: (body) => request('/api/profile', { method: 'PATCH', body }),
+  },
   checkout: {
     status: () => request('/api/checkout/status'),
     createSession: (body) => request('/api/checkout/create-session', { method: 'POST', body }),

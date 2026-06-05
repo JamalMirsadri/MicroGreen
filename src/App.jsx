@@ -26,6 +26,7 @@ import ProductDetail from './pages/ProductDetail';
 import CheckoutPage from './pages/CheckoutPage';
 import CheckoutSuccess from './pages/CheckoutSuccess';
 import CheckoutCancel from './pages/CheckoutCancel';
+import Profile from './pages/Profile';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
@@ -95,6 +96,7 @@ const AuthenticatedApp = () => {
         />
         <Route path="/shop" element={<Shop />} />
         <Route path="/shop/:id" element={<ProductDetail />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/checkout/success" element={<CheckoutSuccess />} />
         <Route path="/checkout/cancel" element={<CheckoutCancel />} />
